@@ -1,9 +1,11 @@
 package routes
 
 import (
+	"github.com/rs/cors"
 	"net/http"
 	"timely/config/responses"
-	userscontoller "timely/controllers/v1/users"
+	authController "timely/controllers/v1/auth"
+	usersController "timely/controllers/v1/users"
 	httplib "timely/libs/http"
 	mws "timely/middlewares"
 
@@ -19,16 +21,32 @@ func Router() *mux.Router {
 		resp := responses.GeneralResponse{Success: true, Message: "timely  server running....", Data: "vsm SERVER v1.0"}
 		httplib.Response(res, resp)
 	})
-
+	//	APPLY MIDDLEWARES
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"*"},
+		AllowedMethods:   []string{"*"},
+	})
 	route.Use(mws.AccessLogToConsole)
+
+	route.Use(c.Handler)
+
+	//*****************
+	// AUTH ROUTES
+	//*****************
+	authRoute := route.PathPrefix("/v1/auth").Subrouter()
+	authRoute.HandleFunc("/login", authController.Login).Methods("POST")
+	//mwsWithAuth adds authorization token to endpoints
+	mwsWithAuth := mws.AuthorizationSingle
 
 	//************************
 	// USERS  ROUTES
 	//************************
 	usersRoute := route.PathPrefix("/v1/users").Subrouter()
-	usersRoute.HandleFunc("", userscontoller.RegisterUser).Methods("POST")
-	usersRoute.HandleFunc("/{email}", userscontoller.GetUserDetailsByEmail).Methods("GET")
-	usersRoute.HandleFunc("/{id}", userscontoller.UpdateUserDetials).Methods("PUT")
-	usersRoute.HandleFunc("/{email}", userscontoller.DeleteUser).Methods("DELETE")
+	usersRoute.HandleFunc("", usersController.RegisterUser).Methods("POST")
+	usersRoute.HandleFunc("/{email}", mwsWithAuth(usersController.GetUserDetailsByEmail)).Methods("GET")
+	usersRoute.HandleFunc("/{id}", mwsWithAuth(usersController.UpdateUserDetials)).Methods("PUT")
+	usersRoute.HandleFunc("/{email}", mwsWithAuth(usersController.DeleteUser)).Methods("DELETE")
 	return route
 }

@@ -3,7 +3,6 @@ module timely
 go 1.22.0
 
 require (
-	github.com/aws/aws-sdk-go v1.51.28
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/gorilla/context v1.1.2
@@ -12,6 +11,7 @@ require (
 	github.com/mailgun/mailgun-go v2.0.0+incompatible
 	github.com/rs/cors v1.11.0
 	github.com/spf13/viper v1.18.2
+	golang.org/x/crypto v0.16.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
 
@@ -23,7 +23,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gobuffalo/envy v1.10.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

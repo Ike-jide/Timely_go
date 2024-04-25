@@ -1,13 +1,13 @@
 package visitorscontoller
 
 import (
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"time"
 	dbs "timely/config/db"
 	"timely/config/responses"
 	httplib "timely/libs/http"
-
-	"gopkg.in/mgo.v2/bson"
+	crypt "timely/util/crypto"
 
 	usersmodel "timely/models/users"
 
@@ -44,14 +44,24 @@ func RegisterUser(res http.ResponseWriter, req *http.Request) {
 
 	data.ID = bson.NewObjectId()
 	data.Date = time.Now()
-
+	hash := crypt.HashText(data.Password)
+	data.Password = hash
 	err := coll.Insert(data)
 
 	if err != nil {
 		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
 		httplib.Response400(res, resp)
 	}
-	resp := responses.GeneralResponse{Success: true, Data: data, Message: "user created"}
+	token := crypt.Jwt(data.ID)
+
+	//mask password
+	data.Password = ""
+	details := struct {
+		User  interface{} `json:"user"`
+		Token string      `json:"token"`
+	}{User: data, Token: token}
+
+	resp := responses.GeneralResponse{Success: true, Data: details, Message: "user created"}
 	httplib.Response(res, resp)
 }
 
