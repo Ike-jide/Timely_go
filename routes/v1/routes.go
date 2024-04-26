@@ -46,7 +46,7 @@ func Router() *mux.Router {
 	usersRoute := route.PathPrefix("/v1/users").Subrouter()
 	usersRoute.HandleFunc("", usersController.RegisterUser).Methods("POST")
 	usersRoute.HandleFunc("/{email}", mwsWithAuth(usersController.GetUserDetailsByEmail)).Methods("GET")
-	usersRoute.HandleFunc("/{id}", mwsWithAuth(usersController.UpdateUserDetials)).Methods("PUT")
+	usersRoute.HandleFunc("/{id}", mwsWithAuth(usersController.UpdateUserDetails)).Methods("PUT")
 	usersRoute.HandleFunc("/{email}", mwsWithAuth(usersController.DeleteUser)).Methods("DELETE")
 	return route
 }

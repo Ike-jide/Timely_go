@@ -1,6 +1,7 @@
-package visitorscontoller
+package users
 
 import (
+	"context"
 	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"time"
@@ -12,7 +13,6 @@ import (
 	usersmodel "timely/models/users"
 
 	"github.com/spf13/viper"
-	mgo "gopkg.in/mgo.v2"
 )
 
 var (
@@ -23,20 +23,20 @@ var (
 
 // RegisterUser controller
 func RegisterUser(res http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	c := httplib.C{Req: req, Res: res}
 
-	var db *mgo.Session
-	env := viper.GetString("env")
+	db, err := dbs.ConnectMongodbURL()
 
-	if env == "prod" {
-		db = dbs.ConnectMongodbTLS()
-	} else {
-		db = dbs.ConnectMongodb()
+	if err != nil {
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
+		httplib.Response400(res, resp)
+		return
 	}
 
-	defer db.Close()
+	defer db.Disconnect(ctx)
 
-	coll := db.DB(dbName).C(dbCollection)
+	coll := db.Database(dbName).Collection(dbCollection)
 
 	var data usersmodel.Users
 
@@ -46,12 +46,13 @@ func RegisterUser(res http.ResponseWriter, req *http.Request) {
 	data.Date = time.Now()
 	hash := crypt.HashText(data.Password)
 	data.Password = hash
-	err := coll.Insert(data)
-
+	_, err = coll.InsertOne(ctx, data)
 	if err != nil {
 		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
 		httplib.Response400(res, resp)
+		return
 	}
+
 	token := crypt.Jwt(data.ID)
 
 	//mask password
@@ -67,30 +68,31 @@ func RegisterUser(res http.ResponseWriter, req *http.Request) {
 
 // GetUserDetailsByEmail controller
 func GetUserDetailsByEmail(res http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	c := httplib.C{Req: req, Res: res}
 
-	var db *mgo.Session
-	env := viper.GetString("env")
+	db, err := dbs.ConnectMongodbURL()
 
-	if env == "prod" {
-		db = dbs.ConnectMongodbTLS()
-	} else {
-		db = dbs.ConnectMongodb()
+	if err != nil {
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
+		httplib.Response400(res, resp)
+		return
 	}
 
-	defer db.Close()
+	defer db.Disconnect(ctx)
 
-	coll := db.DB(dbName).C(dbCollection)
+	coll := db.Database(dbName).Collection(dbCollection)
 
 	email := c.Params("email")
 
-	var user interface{}
+	var user usersmodel.Users
 
-	err := coll.Find(bson.M{"email": email}).One(&user)
+	err = coll.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 
 	if err != nil {
 		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error getting user"}
 		httplib.Response400(res, resp)
+		return
 	}
 
 	resp := responses.GeneralResponse{Success: true, Data: user, Message: "user details"}
@@ -99,61 +101,72 @@ func GetUserDetailsByEmail(res http.ResponseWriter, req *http.Request) {
 
 // DeleteUser controller
 func DeleteUser(res http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	c := httplib.C{Req: req, Res: res}
 
-	var db *mgo.Session
-	env := viper.GetString("env")
-
-	if env == "prod" {
-		db = dbs.ConnectMongodbTLS()
-	} else {
-		db = dbs.ConnectMongodb()
-	}
-
-	defer db.Close()
-
-	coll := db.DB(dbName).C(dbCollection)
-
-	email := c.Params("email")
-
-	err := coll.Remove(bson.M{"email": email})
+	db, err := dbs.ConnectMongodbURL()
 
 	if err != nil {
-		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error deleting visitor"}
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
 		httplib.Response400(res, resp)
+		return
 	}
 
-	resp := responses.GeneralResponse{Success: true, Data: email, Message: "visitor deleted"}
+	defer db.Disconnect(ctx)
+
+	coll := db.Database(dbName).Collection(dbCollection)
+	email := c.Params("email")
+
+	_, err = coll.DeleteOne(ctx, bson.M{"email": email})
+
+	if err != nil {
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error deleting user"}
+		httplib.Response400(res, resp)
+		return
+	}
+
+	resp := responses.GeneralResponse{Success: true, Data: email, Message: "user deleted"}
 	httplib.Response(res, resp)
 }
 
-// UpdateUserDetials controller
-func UpdateUserDetials(res http.ResponseWriter, req *http.Request) {
+// UpdateUserDetails controller
+func UpdateUserDetails(res http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	c := httplib.C{Req: req, Res: res}
-	var db *mgo.Session
-	env := viper.GetString("env")
 
-	if env == "prod" {
-		db = dbs.ConnectMongodbTLS()
-	} else {
-		db = dbs.ConnectMongodb()
+	db, err := dbs.ConnectMongodbURL()
+
+	if err != nil {
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error creating user"}
+		httplib.Response400(res, resp)
+		return
 	}
 
-	defer db.Close()
+	defer db.Disconnect(ctx)
 
-	coll := db.DB(dbName).C(dbCollection)
+	coll := db.Database(dbName).Collection(dbCollection)
 
 	var updates bson.M
 
 	c.BindJSON(updates)
 	userID := c.Params("id")
-
-	err := coll.Update(bson.M{"_id": bson.ObjectIdHex(userID)}, bson.M{"$set": updates})
+	_, err = coll.UpdateByID(ctx, bson.M{"_id": bson.ObjectIdHex(userID)}, bson.M{"$set": updates})
 
 	if err != nil {
-		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error updating visitor"}
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error updating user"}
 		httplib.Response(res, resp)
+		return
 	}
-	resp := responses.GeneralResponse{Success: true, Data: updates, Message: "visitor updated"}
+
+	var user usersmodel.Users
+
+	err = coll.FindOne(ctx, bson.M{"_id": bson.ObjectIdHex(userID)}).Decode(&user)
+	if err != nil {
+		resp := responses.GeneralResponse{Success: false, Error: err.Error(), Message: "error updating user"}
+		httplib.Response(res, resp)
+		return
+	}
+
+	resp := responses.GeneralResponse{Success: true, Data: user, Message: "user updated"}
 	httplib.Response(res, resp)
 }

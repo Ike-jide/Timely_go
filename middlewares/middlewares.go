@@ -17,10 +17,10 @@ type exception struct {
 	Message string `json:"message"`
 }
 
-//Middleware type
+// Middleware type
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-//ChainMiddleware chains multiply handlers
+// ChainMiddleware chains multiply handlers
 func ChainMiddleware(mw ...Middleware) Middleware {
 	return func(final http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func ChainMiddleware(mw ...Middleware) Middleware {
 	}
 }
 
-//AuthorizationSingle with jwt
+// AuthorizationSingle with jwt
 func AuthorizationSingle(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		authorizationHeader := req.Header.Get("authorization")
@@ -48,7 +48,7 @@ func AuthorizationSingle(next http.HandlerFunc) http.HandlerFunc {
 				})
 				if error != nil {
 					resp := responses.GeneralResponse{Success: false, Message: "token error", Error: error.Error()}
-					httplib.Response(w, resp)
+					httplib.Response400(w, resp)
 				}
 				if token.Valid {
 					context.Set(req, "decoded", token.Claims)
@@ -65,7 +65,7 @@ func AuthorizationSingle(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-//AuthorizationChain with jwt
+// AuthorizationChain with jwt
 func AuthorizationChain(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		authorizationHeader := req.Header.Get("authorization")
@@ -80,7 +80,7 @@ func AuthorizationChain(next http.Handler) http.Handler {
 				})
 				if error != nil {
 					resp := responses.GeneralResponse{Success: false, Message: "token error", Error: error.Error()}
-					httplib.Response(w, resp)
+					httplib.Response400(w, resp)
 				}
 				if token.Valid {
 					context.Set(req, "decoded", token.Claims)
@@ -97,7 +97,7 @@ func AuthorizationChain(next http.Handler) http.Handler {
 	})
 }
 
-//AccessLogToConsole prints sever logs to the terminal
+// AccessLogToConsole prints sever logs to the terminal
 func AccessLogToConsole(r http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
